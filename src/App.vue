@@ -1,15 +1,15 @@
 <template>
-  <section
-    ref="intersectionObserverRoot"
-    class="h-screen w-screen overflow-y-scroll bg-gray-20 p-8"
+  <InfiniteScroll
+    :onScrollToEnd="fetchMoreItems"
+    :isLoading="isLoading"
   >
     <ul
-      class="flex flex-col gap-4"
+      class="flex flex-col items-center gap-4"
     >
       <li
         v-for="{ id, name, species, house } in items"
         :key="id"
-        class="rounded-4 overflow-hidden shadow-5 bg-white"
+        class="w-full max-w-4 rounded-4 overflow-hidden shadow-5 bg-white"
       >
         <article class="flex gap-4">
           <section
@@ -38,71 +38,33 @@
           </section>
         </article>
       </li>
-    </ul>
-    <div
-      ref="observed"
-      class="h-8 bg-blue-10 text-blue-90 w-full"
-    >
-      <span
-        v-if="delayable.status === 'delaying'"
-      >
-        Loading...
-      </span>
-      <span
-        v-else
-      >
-        Loaded
-      </span>
-    </div>
-    
-  </section>
+    </ul>    
+  </InfiniteScroll>
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
-import { useFetchable, useListenable, useDelayable } from '@baleada/vue-composition'
-import allItems from './allItems'
+import { ref, computed } from 'vue'
+import { useDelayable } from '@baleada/vue-composition'
+import allItems from './allItems' // Normally this data would be fetched on the fly
+import InfiniteScroll from './InfiniteScroll.vue'
 
 export default {
+  components: {
+    InfiniteScroll,
+  },
   setup () {
-    onMounted(() => {
-      intersectable.value.listen(
-        entries => {
-          const { 0: { isIntersecting } } = entries
-
-          console.log(entries[0].intersectionRatio)
-
-          if (isIntersecting) {
-            fetchMoreItems()
-          }
-        },
-        {
-          target: observed.value,
-          observer: {
-            root: intersectionObserverRoot.value,
-          },
-        }
-      )
-    })
-
-    const intersectable = useListenable('intersect'),
-          fetchMoreItems = () => delayable.value.delay(),
+    const fetchMoreItems = () => delayable.value.delay(),
           delayable = useDelayable(
-            () => {
-              console.log(items.value)
-              items.value = [...items.value, ...allItems.slice(items.value.length, items.value.length + 10)]
-            },
-            { delay: 2000 },
+            () => (items.value = [...items.value, ...allItems.slice(items.value.length, items.value.length + 10)]),
+            { delay: 2000 }, // Fake delay to simulate data fetching
           ),
           items = ref(allItems.slice(0, 10)),
-          observed = ref(null),
-          intersectionObserverRoot = ref(null)
+          isLoading = computed(() => delayable.value.status === 'delaying')
 
     return {
-      observed,
-      intersectionObserverRoot,
+      fetchMoreItems,
       items,
-      delayable,
+      isLoading,
     }
   }
 }
